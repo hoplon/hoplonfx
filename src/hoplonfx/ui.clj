@@ -3,29 +3,73 @@
     [clojure.data :as data]
     [hoplonfx.util :refer :all]
     [hoplonfx.cell :as c :refer [cell? formula]]
-    [camel-snake-kebab.core :refer [->camelCaseString]]
-    [hoplonfx.codegen :refer [define-javafx-methods
-                              define-javafx-constructors]])
+    [hoplonfx.codegen :refer [defjavafx-methods defjavafx-constructors]])
   (:import
+    [hoplonfx ApplicationShim]
     [javafx.event EventHandler]
-    [javafx.application Platform]
-    [java.util Collections WeakHashMap]))
+    [java.util Collections WeakHashMap]
+    [javafx.application Platform Application]))
+
+(defn run*
+  [f]
+  (Platform/runLater f))
+
+(defmacro run
+  [& body]
+  `(run* (bound-fn [] ~@body)))
+
+(def ^:dynamic *stage* nil)
+
+(defonce primary-stage
+  (delay
+    (with-promise [q]
+      (Application/launch
+        ApplicationShim
+        (->> (meta (deftmp #(deliver q %)))
+             ((juxt :ns :name))
+             ((conxt (comp str ns-name) str))
+             (into-array String))))))
+
+(defmacro with-stage
+  [stage & body]
+  `(binding [*stage* (deref ~stage)] ~@body))
+
+(defmacro with-primary-stage
+  [& body]
+  `(with-stage primary-stage ~@body))
+
+(defn set-scene!
+  [scene]
+  (run (.setScene *stage* scene)))
+
+(defn set-title!
+  [title]
+  (run (.setTitle *stage* title)))
 
 (def ^:private metastore
   (Collections/synchronizedMap (WeakHashMap.)))
 
-(defn data
+(defn store
   ([k] (.get metastore k))
   ([k v] (.put metastore k v)))
 
 (defprotocol INode
+  (-data [this])
   (-bind [this k v])
   (-unbind [this token]))
+
+(defn node?
+  [node]
+  (when (satisfies? INode node) node))
 
 (defn node
   [root]
   (or (and (satisfies? INode root) root)
-      (data root)))
+      (store root)))
+
+(defn data
+  [obj]
+  (when (satisfies? INode obj) (-data obj)))
 
 (defn bind
   [obj meth & cells]
@@ -34,14 +78,6 @@
 (defn unbind
   [obj token]
   (when (satisfies? INode obj) (-unbind obj token)))
-
-(defn run*
-  [f]
-  (Platform/runLater f))
-
-(defmacro run
-  [& body]
-  `(run* (fn [] ~@body)))
 
 (defn h*
   [f]
@@ -74,11 +110,12 @@
                 (.setAll (.getChildren (.-root node))))))
 
 (deftype+ Node
-  [root binds kids meta]
+  [root binds kids data]
   :ifn-delegate
   (fn [this & args]
     (-> this (apply-args args) (.-root)))
   INode
+  (-data [this] data)
   (-bind [this f cells]
     (let [c (formula vector cells)]
       (doto [c (with-watch c [xs] (run (apply f root xs)))]
@@ -87,11 +124,11 @@
     (swap! binds disj token)
     (remove-watch (first token) (second token))))
 
-(define-javafx-constructors
+(defjavafx-constructors
   [root-class & args]
   (let [root (apply-constructor root-class args)]
     (with-let [node (Node. root (c/cell #{}) (c/cell []) (c/cell {}))]
-      (data root node)
+      (store root node)
       (with-watch (.-kids node) [old new]
         (let [old-cells (set (filter cell? old))
               new-cells (set (filter cell? new))
@@ -100,7 +137,7 @@
           (doseq [c add] (add-watch c node (fn [& _] (update-kids node))))
           (update-kids node))))))
 
-(define-javafx-methods
+(defjavafx-methods
   [method & args]
   (fn [node]
     (->> args (apply bind node (fn [root & xs]

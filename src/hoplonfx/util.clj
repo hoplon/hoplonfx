@@ -7,6 +7,11 @@
 
 (javafx.embed.swing.JFXPanel.)
 
+(defn requisolve
+  [varsym]
+  (require (symbol (namespace varsym)))
+  @(resolve varsym))
+
 (defn gensyms
   ([n]
    (gensyms "arg%d__" n))

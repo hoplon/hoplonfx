@@ -2,11 +2,11 @@
   (:import
     [java.lang.reflect Modifier])
   (:require
-    ;; Using require/refer below to avoid the runtime dependency.
-    #_[compliment.utils :as compliment]
     [clojure.set :refer [intersection]]
-    [camel-snake-kebab.core :refer [->kebab-case-string]]
-    [hoplonfx.util :refer [apply-constructor gensyms conxt with-let]]))
+    ;; Using require/refer below to avoid the runtime dependencies.
+    #_[compliment.utils :as compliment]
+    #_[camel-snake-kebab.core :refer [->kebab-case-string]]
+    [hoplonfx.util :refer [requisolve apply-constructor gensyms conxt with-let]]))
 
 ;;;; runtime codegen ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -16,19 +16,19 @@
 (def classlist
   (delay (read-string (slurp classlist-path))))
 
-(defmacro define-javafx-constructors
+(defmacro defjavafx-constructors
   [[bind-class & args] & body]
   `(do ~@(for [{:keys [java clj]} (:classes @classlist)]
            `(defn ~(symbol clj) [~@args]
               (let [~bind-class ~(Class/forName java)] ~@body)))))
 
-(defmacro define-javafx-methods
+(defmacro defjavafx-methods
   [[bind-method & args] & body]
   `(do ~@(for [{:keys [java clj]} (:methods @classlist)]
            `(defn ~(symbol clj) [~@args]
               (let [~bind-method ~java] ~@body)))))
 
-;;;; classlist creation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; classlist creation, only available in dev ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn top-package
   [class]
@@ -36,8 +36,7 @@
 
 (defn all-classes
   []
-  (require 'compliment.utils)
-  (@(resolve 'compliment.utils/classes-on-classpath)))
+  ((requisolve 'compliment.utils/classes-on-classpath)))
 
 (defn superclasses-of
   [subclass]
@@ -61,14 +60,18 @@
 
 (defn enriched-classes
   [classes]
-  (->> classes (map (fn [x]
-                      {:java (.getName x)
-                       :clj  (->kebab-case-string (.getSimpleName x))}))))
+  (let [->kebab-case-string
+        (requisolve 'camel-snake-kebab.core/->kebab-case-string)]
+    (->> classes (map (fn [x]
+                        {:java (.getName x)
+                         :clj  (->kebab-case-string (.getSimpleName x))})))))
 
 (defn enriched-methods
   [classes]
   (let [m       Modifier/PUBLIC
-        public? #(when (< 0 (bit-and m (.getModifiers %))) (.getName %))]
+        public? #(when (< 0 (bit-and m (.getModifiers %))) (.getName %))
+        ->kebab-case-string
+        (requisolve 'camel-snake-kebab.core/->kebab-case-string)]
     (->> (mapcat (memfn getMethods) classes)
          (keep public?)
          (into (sorted-set))

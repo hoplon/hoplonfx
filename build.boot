@@ -3,7 +3,7 @@
   :resource-paths #{"resources"}
   :dependencies '[[org.clojure/clojure  "1.9.0"]
                   [backtick             "0.3.4"]
-                  [camel-snake-kebab    "0.4.0"]
+                  [camel-snake-kebab    "0.4.0" :scope "test"]
                   [compliment           "0.3.8" :scope "test"]
                   [virgil               "0.1.8" :scope "test"]])
 
