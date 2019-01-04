@@ -8,16 +8,16 @@
 
 (defonce n (cell 0))
 
-(set-title! "hello world")
-
-(set-scene!
-  ((scene 300 250)
-    ((stack-pane)
-      ((v-box)
-        (-set-alignment Pos/CENTER)
-        ((label)
-          (-set-padding (Insets. 12))
-          (-set-text (cell= (format "clicks: %d" n))))
-        ((button)
-          (-set-text "doit")
-          (-set-on-action (h [_ _] (swap! n inc))))))))
+(defn -main [& _]
+  (set-title! "hello world")
+  (set-scene!
+    ((scene 300 250)
+      ((stack-pane)
+        ((v-box)
+          (-set-alignment Pos/CENTER)
+          ((label)
+            (-set-padding (Insets. 12))
+            (-set-text (cell= (format "clicks: %d" n))))
+          ((button)
+            (-set-text "doit")
+            (-set-on-action (h [_ _] (swap! n inc)))))))))
