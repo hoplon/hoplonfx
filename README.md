@@ -1,6 +1,9 @@
 # hoplonfx
 
-![demo](doc/demo.png)
+<p align="center">
+  <img src="doc/demo.png">
+  <br>
+</p>
 
 First get a REPL going:
 
