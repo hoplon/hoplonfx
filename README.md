@@ -1,6 +1,6 @@
 # hoplonfx
 
-<p align="center">
+<p align="left">
   <img src="doc/demo.png">
   <br>
 </p>
