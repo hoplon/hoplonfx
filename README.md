@@ -14,5 +14,6 @@ $ boot javac repl
 Then eval the `hoplonfx.demo.app` namespace:
 
 ```clojure
-=> (require 'hoplonfx.demo.app)
+=> (use 'hoplonfx.demo.app)
+=> (-main)
 ```
